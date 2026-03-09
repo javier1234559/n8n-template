@@ -1,0 +1,178 @@
+{
+  "name": "Import Google Sheet Leads to HeyReach and Campaign",
+  "id": "EHU8Z4ywTLna6PcR",
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {}
+    },
+    {
+      "id": "gs-read-1",
+      "name": "Get Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [220, 0],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": { "mode": "id", "value": "YOUR_SPREADSHEET_ID" },
+        "sheetName": { "mode": "name", "value": "Sheet1" },
+        "options": {}
+      }
+    },
+    {
+      "id": "loop-1",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [440, 0],
+      "parameters": { "batchSize": 1 }
+    },
+    {
+      "id": "http-import-1",
+      "name": "HeyReach Import Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 0],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.heyreach.io/v1/lists/YOUR_LIST_ID/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_HEYREACH_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $json.email }}\",\n  \"firstName\": \"{{ $json.firstName || $json.first_name || '' }}\",\n  \"lastName\": \"{{ $json.lastName || $json.last_name || '' }}\",\n  \"linkedInProfileUrl\": \"{{ $json.linkedInProfileUrl || $json.linkedin_url || '' }}\"\n}"
+      }
+    },
+    {
+      "id": "if-error-1",
+      "name": "IF Import Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [880, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "err-1",
+              "leftValue": "={{ $json.statusCode || $json.code || 0 }}",
+              "rightValue": 200,
+              "operator": { "type": "number", "operation": "notEqual", "name": "filter.operator.notEqual" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "set-error-1",
+      "name": "Set Error Row Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1100, -120],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "e1", "name": "email", "value": "={{ $('Loop Over Items').item.json.email }}", "type": "string" },
+            { "id": "e2", "name": "is_error", "value": true, "type": "boolean" },
+            { "id": "e3", "name": "error_message", "value": "={{ $json.error?.message || $json.message || $json.body?.message || 'Import failed' }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "gs-update-error-1",
+      "name": "Update Sheet Error Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [1320, -120],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": { "mode": "id", "value": "YOUR_SPREADSHEET_ID" },
+        "sheetName": { "mode": "name", "value": "Sheet1" },
+        "columnToMatchOn": "email",
+        "columns": { "mappingMode": "autoMapInputData", "value": {} },
+        "options": {}
+      }
+    },
+    {
+      "id": "if-campaign-1",
+      "name": "IF In Campaign?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1100, 120],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            {
+              "id": "camp-1",
+              "leftValue": "={{ $('Loop Over Items').item.json.In_campaign }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "http-campaign-1",
+      "name": "HeyReach Add to Campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 80],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.heyreach.io/v1/campaigns/YOUR_CAMPAIGN_ID/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_HEYREACH_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"linkedInAccountId\": \"YOUR_LINKEDIN_ACCOUNT_ID\",\n  \"leads\": [{ \"email\": \"{{ $('Loop Over Items').item.json.email }}\" }]\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": { "main": [[{ "node": "Get Google Sheet", "type": "main", "index": 0 }]] },
+    "Get Google Sheet": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] },
+    "Loop Over Items": {
+      "main": [
+        [{ "node": "HeyReach Import Lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "HeyReach Import Lead": { "main": [[{ "node": "IF Import Error?", "type": "main", "index": 0 }]] },
+    "IF Import Error?": {
+      "main": [
+        [{ "node": "Set Error Row Data", "type": "main", "index": 0 }],
+        [{ "node": "IF In Campaign?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Error Row Data": { "main": [[{ "node": "Update Sheet Error Row", "type": "main", "index": 0 }]] },
+    "Update Sheet Error Row": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] },
+    "IF In Campaign?": {
+      "main": [
+        [{ "node": "HeyReach Add to Campaign", "type": "main", "index": 0 }],
+        [{ "node": "Loop Over Items", "type": "main", "index": 0 }]
+      ]
+    },
+    "HeyReach Add to Campaign": { "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]] }
+  }
+}

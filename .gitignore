@@ -1,0 +1,5 @@
+# Env and secrets (API keys)
+.env
+
+# OS
+.DS_Store

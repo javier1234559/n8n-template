@@ -1,0 +1,393 @@
+{
+  "name": "Webhook HeyReach add to HubSpot CRM",
+  "nodes": [
+    {
+      "id": "wh-1",
+      "name": "Webhook HeyReach",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "heyreach-to-hubspot",
+        "responseMode": "lastNode"
+      },
+      "webhookId": "heyreach-to-hubspot-webhook"
+    },
+    {
+      "id": "set-webhook-1",
+      "name": "Webhook Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [240, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "w1", "name": "firstname", "value": "={{ $json.body.firstname || $json.body.firstName || $json.firstname || '' }}", "type": "string" },
+            { "id": "w2", "name": "lastname", "value": "={{ $json.body.lastname || $json.body.lastName || $json.lastname || '' }}", "type": "string" },
+            { "id": "w3", "name": "email", "value": "={{ $json.body.email || $json.email || '' }}", "type": "string" },
+            { "id": "w4", "name": "linkedin", "value": "={{ $json.body.linkedin || $json.body.linkedInProfileUrl || $json.linkedin_url || '' }}", "type": "string" },
+            { "id": "w5", "name": "company_name", "value": "={{ $json.body.company_name || $json.body.companyName || '' }}", "type": "string" },
+            { "id": "w6", "name": "company_domain", "value": "={{ $json.body.company_domain || $json.body.domain || '' }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "hs-search-co-1",
+      "name": "HubSpot Search Company",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [460, 0],
+      "parameters": {
+        "resource": "company",
+        "operation": "searchByDomain",
+        "domain": "={{ $json.company_domain || 'placeholder.com' }}"
+      }
+    },
+    {
+      "id": "merge-webhook-company",
+      "name": "Merge Webhook + Company",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [680, 0],
+      "parameters": { "mode": "combine", "combineBy": "combineByPosition" }
+    },
+    {
+      "id": "if-co-1",
+      "name": "IF Company Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [900, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "c1", "leftValue": "={{ $json.properties ? Object.keys($json.properties).length : 0 }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt", "name": "filter.operator.gt" } }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "hs-create-co-1",
+      "name": "HubSpot Create Company",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [1120, -120],
+      "parameters": {
+        "resource": "company",
+        "operation": "create",
+        "name": "={{ $json.company_name || 'Unknown' }}"
+      }
+    },
+    {
+      "id": "wait-5s-co",
+      "name": "Wait 5s Company",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1340, -120],
+      "parameters": { "resume": "timeInterval", "amount": 5, "unit": "seconds" }
+    },
+    {
+      "id": "hs-search-co-2",
+      "name": "HubSpot Search Company Again",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [1560, -120],
+      "parameters": {
+        "resource": "company",
+        "operation": "searchByDomain",
+        "domain": "={{ $('Webhook Data').item.json.company_domain || 'placeholder.com' }}"
+      }
+    },
+    {
+      "id": "set-company-1",
+      "name": "Set Company Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 120],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "sc7", "name": "companyId", "value": "={{ $json.id }}", "type": "string" },
+            { "id": "sc8", "name": "companyName", "value": "={{ $json.properties?.name || $json.name || $('Merge Webhook + Company').item.json.company_name }}", "type": "string" }
+          ]
+        },
+        "options": { "include": "allInputFields" }
+      }
+    },
+    {
+      "id": "set-company-from-create",
+      "name": "Set Company Data From Create",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1780, -120],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "scc1", "name": "firstname", "value": "={{ $('Webhook Data').item.json.firstname }}", "type": "string" },
+            { "id": "scc2", "name": "lastname", "value": "={{ $('Webhook Data').item.json.lastname }}", "type": "string" },
+            { "id": "scc3", "name": "email", "value": "={{ $('Webhook Data').item.json.email }}", "type": "string" },
+            { "id": "scc4", "name": "linkedin", "value": "={{ $('Webhook Data').item.json.linkedin }}", "type": "string" },
+            { "id": "scc5", "name": "company_name", "value": "={{ $('Webhook Data').item.json.company_name }}", "type": "string" },
+            { "id": "scc6", "name": "company_domain", "value": "={{ $('Webhook Data').item.json.company_domain }}", "type": "string" },
+            { "id": "scc7", "name": "companyId", "value": "={{ $json.id }}", "type": "string" },
+            { "id": "scc8", "name": "companyName", "value": "={{ $json.properties?.name || $json.name || $('Webhook Data').item.json.company_name }}", "type": "string" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "merge-company-data",
+      "name": "Merge Company Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2000, 0],
+      "parameters": { "mode": "append", "options": {} }
+    },
+    {
+      "id": "hs-search-contact",
+      "name": "HubSpot Search Contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [2220, 0],
+      "parameters": {
+        "resource": "contact",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  { "propertyName": "email", "operator": "EQ", "value": "={{ $json.email }}" }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "merge-webhook-contact",
+      "name": "Merge Company + Contact",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2440, 0],
+      "parameters": { "mode": "combine", "combineBy": "combineByPosition" }
+    },
+    {
+      "id": "if-contact-1",
+      "name": "IF Contact Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2660, 0],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 2 },
+          "conditions": [
+            { "id": "ct1", "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty", "name": "filter.operator.notEmpty" } }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "hs-create-contact",
+      "name": "HubSpot Create/Update Contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [2880, -100],
+      "parameters": {
+        "resource": "contact",
+        "operation": "upsert",
+        "email": "={{ $json.email }}",
+        "additionalFields": { "firstname": "={{ $json.firstname }}", "lastname": "={{ $json.lastname }}" }
+      }
+    },
+    {
+      "id": "wait-5s-contact",
+      "name": "Wait 5s Contact",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [3100, -100],
+      "parameters": { "resume": "timeInterval", "amount": 5, "unit": "seconds" }
+    },
+    {
+      "id": "hs-search-contact-2",
+      "name": "HubSpot Search Contact Again",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [3320, -100],
+      "parameters": {
+        "resource": "contact",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  { "propertyName": "email", "operator": "EQ", "value": "={{ $('Merge Company Data').item.json.email }}" }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "set-contact-data",
+      "name": "Set Contact Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2880, 100],
+      "parameters": {
+        "assignments": { "assignments": [{ "id": "sct1", "name": "contactId", "value": "={{ $json.id }}", "type": "string" }] },
+        "options": { "include": "allInputFields" }
+      }
+    },
+    {
+      "id": "merge-before-set-contact",
+      "name": "Merge Before Set Contact",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [3320, -180],
+      "parameters": { "mode": "combine", "combineBy": "combineByPosition" }
+    },
+    {
+      "id": "set-contact-from-create",
+      "name": "Set Contact Data From Create",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [3540, -100],
+      "parameters": {
+        "assignments": { "assignments": [{ "id": "sctc1", "name": "contactId", "value": "={{ $json.id }}", "type": "string" }] },
+        "options": { "include": "allInputFields" }
+      }
+    },
+    {
+      "id": "merge-contact-data",
+      "name": "Merge Contact Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [3760, 0],
+      "parameters": { "mode": "append" }
+    },
+    {
+      "id": "hs-create-deal",
+      "name": "HubSpot Create Deal",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [3980, 0],
+      "parameters": {
+        "resource": "deal",
+        "operation": "create",
+        "stage": "appointmentscheduled",
+        "additionalFields": {
+          "associatedCompany": "={{ $json.companyId }}",
+          "associatedContact": "={{ $json.contactId }}"
+        }
+      }
+    },
+    {
+      "id": "wait-5s-deal",
+      "name": "Wait 5s Deal",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [4200, 0],
+      "parameters": { "resume": "timeInterval", "amount": 5, "unit": "seconds" }
+    },
+    {
+      "id": "merge-before-set-deal",
+      "name": "Merge Before Set Deal",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [4300, 0],
+      "parameters": { "mode": "combine", "combineBy": "combineByPosition" }
+    },
+    {
+      "id": "set-deal-data",
+      "name": "Set Deal Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [4420, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "sd1", "name": "dealId", "value": "={{ $json.id }}", "type": "string" },
+            { "id": "sd2", "name": "dealUrl", "value": "=https://app.hubspot.com/contacts/YOUR_PORTAL_ID/deal/{{ $json.id }}", "type": "string" }
+          ]
+        },
+        "options": { "include": "allInputFields" }
+      }
+    },
+    {
+      "id": "slack-notify",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [4640, 0],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": "#leads",
+        "text": "=*New Lead in HubSpot*\n*Contact:* {{ $json.firstname }} {{ $json.lastname }}\n*Email:* {{ $json.email }}\n*Company:* {{ $json.companyName }}\n\n<{{ $json.dealUrl }}|View Deal in HubSpot>"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook HeyReach": { "main": [[{ "node": "Webhook Data", "type": "main", "index": 0 }]] },
+    "Webhook Data": {
+      "main": [
+        [{ "node": "Merge Webhook + Company", "type": "main", "index": 0 }],
+        [{ "node": "HubSpot Search Company", "type": "main", "index": 0 }]
+      ]
+    },
+    "HubSpot Search Company": { "main": [[{ "node": "Merge Webhook + Company", "type": "main", "index": 1 }]] },
+    "Merge Webhook + Company": { "main": [[{ "node": "IF Company Found?", "type": "main", "index": 0 }]] },
+    "IF Company Found?": {
+      "main": [
+        [{ "node": "HubSpot Create Company", "type": "main", "index": 0 }],
+        [{ "node": "Set Company Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "HubSpot Create Company": { "main": [[{ "node": "Wait 5s Company", "type": "main", "index": 0 }]] },
+    "Wait 5s Company": { "main": [[{ "node": "HubSpot Search Company Again", "type": "main", "index": 0 }]] },
+    "HubSpot Search Company Again": { "main": [[{ "node": "Set Company Data From Create", "type": "main", "index": 0 }]] },
+    "Set Company Data": { "main": [[{ "node": "Merge Company Data", "type": "main", "index": 0 }]] },
+    "Set Company Data From Create": { "main": [[{ "node": "Merge Company Data", "type": "main", "index": 0 }]] },
+    "Merge Company Data": {
+      "main": [
+        [{ "node": "HubSpot Search Contact", "type": "main", "index": 0 }],
+        [{ "node": "Merge Company + Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "HubSpot Search Contact": { "main": [[{ "node": "Merge Company + Contact", "type": "main", "index": 1 }]] },
+    "Merge Company + Contact": { "main": [[{ "node": "IF Contact Found?", "type": "main", "index": 0 }]] },
+    "IF Contact Found?": {
+      "main": [
+        [
+          { "node": "HubSpot Create/Update Contact", "type": "main", "index": 0 },
+          { "node": "Merge Before Set Contact", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Set Contact Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "HubSpot Create/Update Contact": { "main": [[{ "node": "Wait 5s Contact", "type": "main", "index": 0 }]] },
+    "Wait 5s Contact": { "main": [[{ "node": "HubSpot Search Contact Again", "type": "main", "index": 0 }]] },
+    "HubSpot Search Contact Again": { "main": [[{ "node": "Merge Before Set Contact", "type": "main", "index": 1 }]] },
+    "Merge Before Set Contact": { "main": [[{ "node": "Set Contact Data From Create", "type": "main", "index": 0 }]] },
+    "Set Contact Data": { "main": [[{ "node": "Merge Contact Data", "type": "main", "index": 0 }]] },
+    "Set Contact Data From Create": { "main": [[{ "node": "Merge Contact Data", "type": "main", "index": 0 }]] },
+    "Merge Contact Data": {
+      "main": [
+        [{ "node": "HubSpot Create Deal", "type": "main", "index": 0 }],
+        [{ "node": "Merge Before Set Deal", "type": "main", "index": 0 }]
+      ]
+    },
+    "HubSpot Create Deal": { "main": [[{ "node": "Wait 5s Deal", "type": "main", "index": 0 }]] },
+    "Wait 5s Deal": { "main": [[{ "node": "Merge Before Set Deal", "type": "main", "index": 1 }]] },
+    "Merge Before Set Deal": { "main": [[{ "node": "Set Deal Data", "type": "main", "index": 0 }]] },
+    "Set Deal Data": { "main": [[{ "node": "Slack Notification", "type": "main", "index": 0 }]] }
+  }
+}
