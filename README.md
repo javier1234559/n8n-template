@@ -2,6 +2,17 @@
 
 This repo holds many **unrelated** n8n workflows. Each workflow is stored by project and environment.
 
+## Setup
+
+1. Run the script to start the n8n-mcp server
+
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+2. @AGENT.md to build the workflow
+
 ## Structure
 
 ```
@@ -23,11 +34,11 @@ Use this convention for workflow JSON files:
 
 **`[Project name] - Dev - Project description.json`**
 
-| Part               | Meaning                                                          |
-|--------------------|------------------------------------------------------------------|
-| Project name       | Same as the folder name (e.g. `AAA - Linkedin Outreach`)        |
-| Dev                | Literal ` - Dev - ` (space, hyphen, space)                     |
-| Project description| Short description of the workflow (e.g. `Import Lead to HeyReach`) |
+| Part                | Meaning                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| Project name        | Same as the folder name (e.g. `AAA - Linkedin Outreach`)           |
+| Dev                 | Literal `- Dev -` (space, hyphen, space)                           |
+| Project description | Short description of the workflow (e.g. `Import Lead to HeyReach`) |
 
 **Example:**  
 `AAA - Linkedin Outreach - Dev - Import Lead to HeyReach.json`  
